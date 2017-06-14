@@ -46,6 +46,12 @@ def _plot_freq_hists(allfreqs, what, axis, title):
         trappy.plot_utils.plot_hist(allfreqs[actor], ax, this_title, "KHz", 20,
                              "Frequency", xlim, "default")
 
+SPECIAL_FIELDS_RE = re.compile(
+                        r"^\s*(?P<comm>.*)-(?P<pid>\d+)(?:\s+\(.*\))"\
+                        r"?\s+\[(?P<cpu>\d+)\](?:\s+....)?\s+"\
+                        r"(?P<timestamp>[0-9]+\.[0-9]+):"
+)
+
 class GenericFTrace(BareTrace):
     """Generic class to parse output of FTrace.  This class is meant to be
 subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
@@ -168,10 +174,6 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
                     return True
             return False
 
-        special_fields_regexp = r"^\s*(?P<comm>.*)-(?P<pid>\d+)(?:\s+\(.*\))"\
-                                r"?\s+\[(?P<cpu>\d+)\](?:\s+....)?\s+"\
-                                r"(?P<timestamp>[0-9]+\.[0-9]+):"
-        special_fields_regexp = re.compile(special_fields_regexp)
         start_match = re.compile(r"[A-Za-z0-9_]+=")
 
         actual_trace = itertools.dropwhile(self.trace_hasnt_started(), fin)
@@ -188,7 +190,7 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
 
             line = line[:-1]
 
-            special_fields_match = special_fields_regexp.match(line)
+            special_fields_match = SPECIAL_FIELDS_RE.match(line)
             if not special_fields_match:
                 raise FTraceParseError("Couldn't match special fields in '{}'".format(line))
             comm = special_fields_match.group('comm')
@@ -231,7 +233,7 @@ is not part of the trace.
         started).
 
         """
-        return lambda x: False
+        return lambda line: not SPECIAL_FIELDS_RE.match(line)
 
     def trace_hasnt_finished(self):
         """Return a function that accepts a line and returns true if this line
@@ -588,6 +590,6 @@ class FTrace(GenericFTrace):
                     setattr(self, "_" + match.group(1), match.group(2))
                     metadata_keys.remove(match.group(1))
 
-                if re.search(r"^\s+[^\[]+-\d+\s+\[\d+\]\s+\d+\.\d+:", line):
+                if SPECIAL_FIELDS_RE.match(line):
                     # Reached a valid trace line, abort metadata population
                     return
