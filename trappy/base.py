@@ -100,6 +100,7 @@ class Base(object):
     """
     def __init__(self, parse_raw=False):
         self.data_frame = pd.DataFrame()
+        self.line_array = []
         self.data_array = []
         self.time_array = []
         self.comm_array = []
@@ -144,7 +145,7 @@ class Base(object):
 
         return ret
 
-    def append_data(self, time, comm, pid, cpu, data):
+    def append_data(self, time, comm, pid, cpu, line, data):
         """Append data parsed from a line to the corresponding arrays
 
         The :mod:`DataFrame` will be created from this when the whole trace
@@ -169,6 +170,7 @@ class Base(object):
         self.comm_array.append(comm)
         self.pid_array.append(pid)
         self.cpu_array.append(cpu)
+        self.line_array.append(line)
         self.data_array.append(data)
 
     def generate_parsed_data(self):
@@ -180,9 +182,10 @@ class Base(object):
         check_memory_usage = True
         check_memory_count = 1
 
-        for (comm, pid, cpu, data_str) in zip(self.comm_array, self.pid_array,
-                                              self.cpu_array, self.data_array):
-            data_dict = {"__comm": comm, "__pid": pid, "__cpu": cpu}
+        for (comm, pid, cpu, line, data_str) in zip(self.comm_array, self.pid_array,
+                                              self.cpu_array, self.line_array,
+                                              self.data_array):
+            data_dict = {"__comm": comm, "__pid": pid, "__cpu": cpu, "__line": line}
             prev_key = None
             for field in data_str.split():
                 if "=" not in field:
@@ -231,6 +234,7 @@ class Base(object):
         self.data_frame = pd.DataFrame(self.generate_parsed_data(), index=time_idx)
 
         self.time_array = []
+        self.line_array = []
         self.comm_array = []
         self.pid_array = []
         self.cpu_array = []
