@@ -180,7 +180,10 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
         actual_trace = itertools.takewhile(self.trace_hasnt_finished(),
                                            actual_trace)
 
-        for line in itertools.ifilter(contains_unique_word, actual_trace):
+        for line in actual_trace:
+            if not contains_unique_word(line):
+                self.lines += 1
+                continue
             for unique_word, cls in cls_for_unique_word.iteritems():
                 if unique_word in line:
                     trace_class = cls
@@ -203,6 +206,7 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
 
             if (timestamp < window[0] + self.basetime) or \
                (timestamp < abs_window[0]):
+                self.lines += 1
                 continue
 
             if (window[1] and timestamp > window[1] + self.basetime) or \
@@ -212,6 +216,7 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
             try:
                 data_start_idx =  start_match.search(line).start()
             except AttributeError:
+                self.lines += 1
                 continue
 
             data_str = line[data_start_idx:]
@@ -220,6 +225,7 @@ subclassed by FTrace (for parsing FTrace coming from trace-cmd) and SysTrace."""
             data_str = re.sub(r"[A-Za-z0-9_]+=\{\} ", r"", data_str)
 
             trace_class.append_data(timestamp, comm, pid, cpu, data_str)
+            self.lines += 1
 
     def trace_hasnt_started(self):
         """Return a function that accepts a line and returns true if this line
@@ -271,6 +277,7 @@ is part of the trace.
 
         try:
             with open(trace_file) as fin:
+                self.lines = 0
                 self.__populate_data(
                     fin, cls_for_unique_word, window, abs_window)
         except FTraceParseError as e:
